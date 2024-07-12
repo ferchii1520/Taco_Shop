@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
 
 import com.FDMF.model.Ingredient;
 import com.FDMF.model.Ingredient.Type;
+import com.FDMF.model.Order;
 import com.FDMF.model.Taco;
 
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +25,46 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Controller
 @RequestMapping("/design")
+@SessionAttributes("order")
 public class DesignTacoController {
 	
 	@GetMapping
 	public String showDesignForm(Model model) {
+		
+		prepareData(model);
+		return "design";
+	}
+
+	private List<Ingredient> filterByType(List<Ingredient> ingredients, Type type) {
+		return ingredients.stream()
+			.filter(i -> i.getType().equals(type))
+			.collect(Collectors.toList());
+	}
+	
+	@ModelAttribute(name = "tktn")
+	public Taco taco() {
+		return new Taco();
+	}
+	
+	@ModelAttribute(name = "order")
+	public Order order() {
+		return new Order();
+	}
+	
+	@PostMapping
+	public String processDesign(@Valid @ModelAttribute(name = "tktn") Taco design, Errors errors, Model model, @ModelAttribute Order order) {
+		
+		if(errors.hasErrors()) {
+			log.info("Error de usuario");
+			prepareData(model);
+			return "design";
+		}
+		order.addDesign(design);
+		log.info(design.toString());
+		return "redirect:/orders/current";
+	}
+	
+	private void prepareData(Model model) {
 		List<Ingredient> ingredients = Arrays.asList(
 				new Ingredient("FLTO", "Flour Tortilla", Type.WRAP),
 				new Ingredient("COTO", "Corn Tortilla", Type.WRAP),
@@ -45,26 +83,6 @@ public class DesignTacoController {
 		for(Type type: types) {
 			model.addAttribute(type.toString().toLowerCase(), filterByType(ingredients, type));
 		}
-		
-		model.addAttribute("tktn", new Taco());
-		return "design";
-	}
-
-	private List<Ingredient> filterByType(List<Ingredient> ingredients, Type type) {
-		return ingredients.stream()
-			.filter(i -> i.getType().equals(type))
-			.collect(Collectors.toList());
-	}
-	
-	@PostMapping
-	public String processDesign(@Valid @ModelAttribute(name = "tktn") Taco design, Errors errors) {
-		
-		if(errors.hasErrors()) {
-			log.info("Error de usuario");
-		}
-		log.info(design.toString());
-		return null;
-		
 	}
 
 }
